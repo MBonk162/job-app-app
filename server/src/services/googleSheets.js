@@ -5,10 +5,22 @@ import { sendJobToTrello } from './emailService.js'
 dotenv.config()
 
 // Initialize Google Sheets API
-const auth = new google.auth.GoogleAuth({
-  keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+// Support both local development (file-based) and Vercel (env var-based) credentials
+let authConfig = {
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
-})
+}
+
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  // Production/Vercel: Use credentials from environment variable
+  authConfig.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON)
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  // Local development: Use credentials file
+  authConfig.keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS
+} else {
+  console.warn('No Google credentials configured. Using mock data.')
+}
+
+const auth = new google.auth.GoogleAuth(authConfig)
 
 const sheets = google.sheets({ version: 'v4', auth })
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID
