@@ -99,8 +99,67 @@ const applicationToRow = (app) => {
   return row
 }
 
+// Mock data for when credentials aren't configured
+const MOCK_APPLICATIONS = [
+  {
+    id: 2,
+    date_applied: '2025-12-15',
+    company: 'TechCorp',
+    role_title: 'Senior Software Engineer',
+    source: 'LinkedIn',
+    application_method: 'Online',
+    salary_min: 120000,
+    salary_max: 150000,
+    location: 'Remote',
+    company_size: '500-1000',
+    role_type: 'Full-Stack',
+    tech_stack: 'React, Node.js, PostgreSQL',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 4,
+    response_date: '2025-12-20',
+    response_type: 'Phone Screen',
+    interview_date: '2025-12-28',
+    status: 'Phone Screen',
+    notes: 'Great company culture'
+  },
+  {
+    id: 3,
+    date_applied: '2025-12-18',
+    company: 'StartupXYZ',
+    role_title: 'Frontend Developer',
+    source: 'Indeed',
+    application_method: 'Email',
+    salary_min: 100000,
+    salary_max: 130000,
+    location: 'New York, NY',
+    company_size: '50-100',
+    role_type: 'Frontend',
+    tech_stack: 'React, TypeScript, Tailwind',
+    customized: 'Yes',
+    referral: 'Yes',
+    confidence_match: 5,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Referred by colleague'
+  }
+]
+
 // Get all applications
 export const getApplications = async () => {
+  // Return mock data if credentials aren't configured
+  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('Using mock data - Google credentials not configured')
+    return MOCK_APPLICATIONS
+  }
+
+  if (!SPREADSHEET_ID) {
+    console.log('Using mock data - GOOGLE_SHEET_ID not configured')
+    return MOCK_APPLICATIONS
+  }
+
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -121,6 +180,17 @@ export const getApplications = async () => {
 
 // Add new application
 export const addApplication = async (applicationData) => {
+  // Return mock success if credentials aren't configured
+  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('Mock mode - application not saved (credentials not configured)')
+    return { ...applicationData, id: Date.now() }
+  }
+
+  if (!SPREADSHEET_ID) {
+    console.log('Mock mode - application not saved (GOOGLE_SHEET_ID not configured)')
+    return { ...applicationData, id: Date.now() }
+  }
+
   try {
     const row = applicationToRow(applicationData)
 
@@ -155,6 +225,17 @@ export const addApplication = async (applicationData) => {
 
 // Update application
 export const updateApplication = async (id, updates) => {
+  // Return mock success if credentials aren't configured
+  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('Mock mode - application not updated (credentials not configured)')
+    return { ...updates, id }
+  }
+
+  if (!SPREADSHEET_ID) {
+    console.log('Mock mode - application not updated (GOOGLE_SHEET_ID not configured)')
+    return { ...updates, id }
+  }
+
   try {
     // id is the row number (2-based indexing: row 2 is first data row)
     const rowNumber = parseInt(id)
@@ -192,6 +273,17 @@ export const updateApplication = async (id, updates) => {
 
 // Delete application
 export const deleteApplication = async (id) => {
+  // Return mock success if credentials aren't configured
+  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('Mock mode - application not deleted (credentials not configured)')
+    return { success: true, message: 'Application deleted successfully (mock mode)' }
+  }
+
+  if (!SPREADSHEET_ID) {
+    console.log('Mock mode - application not deleted (GOOGLE_SHEET_ID not configured)')
+    return { success: true, message: 'Application deleted successfully (mock mode)' }
+  }
+
   try {
     // id is the row number (2-based indexing: row 2 is first data row)
     const rowNumber = parseInt(id)
