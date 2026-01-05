@@ -10,14 +10,26 @@ let authConfig = {
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
 }
 
+let credentialsValid = false
+
 if (process.env.GOOGLE_CREDENTIALS_JSON) {
   // Production/Vercel: Use credentials from environment variable
-  authConfig.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON)
+  try {
+    authConfig.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON)
+    credentialsValid = true
+    console.log('✅ Google credentials loaded from GOOGLE_CREDENTIALS_JSON')
+  } catch (error) {
+    console.error('❌ Invalid GOOGLE_CREDENTIALS_JSON format:', error.message)
+    console.error('   The environment variable contains invalid JSON.')
+    console.error('   Falling back to mock data. Please fix or remove this variable in Vercel.')
+  }
 } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   // Local development: Use credentials file
   authConfig.keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  credentialsValid = true
+  console.log('✅ Google credentials loaded from file')
 } else {
-  console.warn('No Google credentials configured. Using mock data.')
+  console.warn('⚠️  No Google credentials configured. Using mock data.')
 }
 
 const auth = new google.auth.GoogleAuth(authConfig)
@@ -149,14 +161,14 @@ const MOCK_APPLICATIONS = [
 
 // Get all applications
 export const getApplications = async () => {
-  // Return mock data if credentials aren't configured
-  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log('Using mock data - Google credentials not configured')
+  // Return mock data if credentials aren't valid or sheet ID is missing
+  if (!credentialsValid) {
+    console.log('📋 Using mock data - Google credentials not configured or invalid')
     return MOCK_APPLICATIONS
   }
 
   if (!SPREADSHEET_ID) {
-    console.log('Using mock data - GOOGLE_SHEET_ID not configured')
+    console.log('📋 Using mock data - GOOGLE_SHEET_ID not configured')
     return MOCK_APPLICATIONS
   }
 
@@ -180,14 +192,9 @@ export const getApplications = async () => {
 
 // Add new application
 export const addApplication = async (applicationData) => {
-  // Return mock success if credentials aren't configured
-  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log('Mock mode - application not saved (credentials not configured)')
-    return { ...applicationData, id: Date.now() }
-  }
-
-  if (!SPREADSHEET_ID) {
-    console.log('Mock mode - application not saved (GOOGLE_SHEET_ID not configured)')
+  // Return mock success if credentials aren't valid or sheet ID is missing
+  if (!credentialsValid || !SPREADSHEET_ID) {
+    console.log('📝 Mock mode - application not saved (credentials not configured or invalid)')
     return { ...applicationData, id: Date.now() }
   }
 
@@ -225,14 +232,9 @@ export const addApplication = async (applicationData) => {
 
 // Update application
 export const updateApplication = async (id, updates) => {
-  // Return mock success if credentials aren't configured
-  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log('Mock mode - application not updated (credentials not configured)')
-    return { ...updates, id }
-  }
-
-  if (!SPREADSHEET_ID) {
-    console.log('Mock mode - application not updated (GOOGLE_SHEET_ID not configured)')
+  // Return mock success if credentials aren't valid or sheet ID is missing
+  if (!credentialsValid || !SPREADSHEET_ID) {
+    console.log('✏️  Mock mode - application not updated (credentials not configured or invalid)')
     return { ...updates, id }
   }
 
@@ -273,14 +275,9 @@ export const updateApplication = async (id, updates) => {
 
 // Delete application
 export const deleteApplication = async (id) => {
-  // Return mock success if credentials aren't configured
-  if (!process.env.GOOGLE_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log('Mock mode - application not deleted (credentials not configured)')
-    return { success: true, message: 'Application deleted successfully (mock mode)' }
-  }
-
-  if (!SPREADSHEET_ID) {
-    console.log('Mock mode - application not deleted (GOOGLE_SHEET_ID not configured)')
+  // Return mock success if credentials aren't valid or sheet ID is missing
+  if (!credentialsValid || !SPREADSHEET_ID) {
+    console.log('🗑️  Mock mode - application not deleted (credentials not configured or invalid)')
     return { success: true, message: 'Application deleted successfully (mock mode)' }
   }
 
