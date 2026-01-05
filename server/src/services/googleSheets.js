@@ -207,17 +207,20 @@ export const addApplication = async (applicationData) => {
 
   try {
     const row = applicationToRow(applicationData)
+    console.log('📝 Adding application with data:', JSON.stringify(applicationData, null, 2))
+    console.log('📝 Converted to row array (length:', row.length, '):', JSON.stringify(row))
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Sheet1!A2:S',
+      range: 'Sheet1!A:A',
       valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
       requestBody: {
         values: [row]
       }
     })
 
-    console.log('Application added:', response.data.updates)
+    console.log('✅ Application added:', response.data.updates)
 
     // Send email to Trello board (don't wait for it to complete)
     sendJobToTrello(applicationData).then(result => {

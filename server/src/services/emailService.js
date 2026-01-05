@@ -17,6 +17,12 @@ const createTransporter = () => {
 
 // Send job application to Trello board via email
 export const sendJobToTrello = async (applicationData) => {
+  // Skip if email credentials not configured
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⏭️  Skipping Trello email - EMAIL credentials not configured')
+    return { success: false, error: 'Email credentials not configured' }
+  }
+
   try {
     const transporter = createTransporter()
 
