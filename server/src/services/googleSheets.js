@@ -173,19 +173,26 @@ export const getApplications = async () => {
   }
 
   try {
+    console.log(`🔍 Attempting to fetch from Sheet ID: ${SPREADSHEET_ID}`)
+    console.log(`🔍 Range: Sheet1!A2:S`)
+    console.log(`🔍 Credentials valid: ${credentialsValid}`)
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Sheet1!A2:S', // Skip header row, read all data columns
     })
 
     const rows = response.data.values || []
+    console.log(`✅ Successfully fetched ${rows.length} rows from Google Sheets`)
 
     // Convert rows to application objects
     const applications = rows.map((row, index) => rowToApplication(row, index + 2)) // +2 because row 1 is header, row 2 is first data
 
     return applications
   } catch (error) {
-    console.error('Error fetching from Google Sheets:', error.message)
+    console.error('❌ Error fetching from Google Sheets:', error.message)
+    console.error('❌ Error code:', error.code)
+    console.error('❌ Full error:', JSON.stringify(error, null, 2))
     throw new Error(`Failed to fetch applications: ${error.message}`)
   }
 }
