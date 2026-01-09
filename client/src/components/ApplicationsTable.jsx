@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { formatDate } from '../utils/analytics'
+import { formatDate, parseLocalDate } from '../utils/analytics'
 
 function ApplicationsTable({ applications, onRefresh, onEdit, onDelete }) {
   const [sortField, setSortField] = useState('date_applied')
@@ -48,8 +48,10 @@ function ApplicationsTable({ applications, onRefresh, onEdit, onDelete }) {
       let bVal = b[sortField] || ''
 
       if (sortField === 'date_applied' || sortField === 'response_date') {
-        aVal = aVal ? new Date(aVal).getTime() : 0
-        bVal = bVal ? new Date(bVal).getTime() : 0
+        const aDate = parseLocalDate(aVal)
+        const bDate = parseLocalDate(bVal)
+        aVal = aDate ? aDate.getTime() : 0
+        bVal = bDate ? bDate.getTime() : 0
       }
 
       if (typeof aVal === 'string') {

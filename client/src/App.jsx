@@ -4,6 +4,7 @@ import ApplicationsTable from './components/ApplicationsTable'
 import AddApplicationForm from './components/AddApplicationForm'
 import EditApplicationForm from './components/EditApplicationForm'
 import { getApplications, addApplication, updateApplication, deleteApplication } from './services/api'
+import { VERSION_INFO } from './version'
 
 function App() {
   const [applications, setApplications] = useState([])
@@ -66,12 +67,20 @@ function App() {
     setShowEditForm(true)
   }
 
+  // Format version info for tooltip
+  const versionTooltip = `Version: ${VERSION_INFO.version}\nBuild: ${new Date(VERSION_INFO.buildDate).toLocaleString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} UTC\nCommit: ${VERSION_INFO.commit}`
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Job Application Tracker</h1>
+          <h1
+            className="text-3xl font-bold text-gray-900 cursor-help"
+            title={versionTooltip}
+          >
+            Job Application Tracker
+          </h1>
           <button
             onClick={() => setShowAddForm(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"

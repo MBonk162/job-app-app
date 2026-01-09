@@ -5,6 +5,15 @@ export const calculateResponseRate = (applications) => {
   return ((withResponse / applications.length) * 100).toFixed(1)
 }
 
+// Parse date string as local date (not UTC)
+// Prevents timezone shift issues when date strings like "2026-01-08" are interpreted as UTC
+const parseLocalDate = (dateString) => {
+  if (!dateString || dateString.trim() === '') return null
+  const [year, month, day] = dateString.split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day) // month is 0-indexed in JavaScript
+}
+
 // Calculate average days to response
 export const calculateAvgDaysToResponse = (applications) => {
   if (!applications || applications.length === 0) return 0
@@ -13,8 +22,9 @@ export const calculateAvgDaysToResponse = (applications) => {
   if (applicationsWithResponse.length === 0) return 0
 
   const totalDays = applicationsWithResponse.reduce((sum, app) => {
-    const applied = new Date(app.date_applied)
-    const response = new Date(app.response_date)
+    const applied = parseLocalDate(app.date_applied)
+    const response = parseLocalDate(app.response_date)
+    if (!applied || !response) return sum
     const days = Math.floor((response - applied) / (1000 * 60 * 60 * 24))
     return sum + days
   }, 0)
@@ -103,6 +113,10 @@ export const getCompanySizeDistribution = (applications) => {
 // Format date for display
 export const formatDate = (dateString) => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
+  const date = parseLocalDate(dateString)
+  if (!date) return '-'
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
+
+// Export parseLocalDate for use in other components
+export { parseLocalDate }
