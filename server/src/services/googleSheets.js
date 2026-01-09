@@ -185,8 +185,15 @@ export const getApplications = async () => {
     const rows = response.data.values || []
     console.log(`✅ Successfully fetched ${rows.length} rows from Google Sheets`)
 
-    // Convert rows to application objects
-    const applications = rows.map((row, index) => rowToApplication(row, index + 2)) // +2 because row 1 is header, row 2 is first data
+    // Convert rows to application objects and filter out blank rows
+    const applications = rows
+      .map((row, index) => rowToApplication(row, index + 2)) // +2 because row 1 is header, row 2 is first data
+      .filter(app => {
+        // Filter out blank rows (rows where company and role_title are both empty)
+        return app.company && app.company.trim() !== '' && app.role_title && app.role_title.trim() !== ''
+      })
+
+    console.log(`✅ Returning ${applications.length} valid applications (${rows.length - applications.length} blank rows filtered)`)
 
     return applications
   } catch (error) {
@@ -292,20 +299,97 @@ export const deleteApplication = async (id) => {
   }
 
   try {
-    // id is the row number (2-based indexing: row 2 is first data row)
+    // id is the row number (1-based indexing: row 2 is first data row)
     const rowNumber = parseInt(id)
 
-    // Delete the row by clearing its contents
-    await sheets.spreadsheets.values.clear({
+    // Use batchUpdate to actually delete the row (not just clear it)
+    // Google Sheets API uses 0-based indexing for dimensions
+    // So row 2 (first data row) = index 1
+    const sheetId = 0 // Sheet1 is typically ID 0, adjust if using different sheet
+
+    await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
-      range: `Sheet1!A${rowNumber}:S${rowNumber}`,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: rowNumber - 1, // Convert to 0-based index
+                endIndex: rowNumber // endIndex is exclusive, so this deletes one row
+              }
+            }
+          }
+        ]
+      }
     })
 
-    console.log(`Application deleted at row ${rowNumber}`)
+    console.log(`✅ Application row ${rowNumber} deleted successfully`)
     return { success: true, message: 'Application deleted successfully' }
   } catch (error) {
     console.error('Error deleting from Google Sheets:', error.message)
     throw new Error(`Failed to delete application: ${error.message}`)
+  }
+}
+
+// Clean up blank rows (utility function)
+export const cleanupBlankRows = async () => {
+  if (!credentialsValid || !SPREADSHEET_ID) {
+    console.log('🧹 Mock mode - cleanup not performed')
+    return { success: true, message: 'Cleanup skipped (mock mode)', rowsDeleted: 0 }
+  }
+
+  try {
+    // Get all rows
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A2:S',
+    })
+
+    const rows = response.data.values || []
+    const sheetId = 0
+
+    // Find blank rows (rows where all cells are empty)
+    const deleteRequests = []
+
+    // Iterate in reverse order so deletion indices remain valid
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const row = rows[i]
+      const isBlank = !row || row.every(cell => !cell || cell.trim() === '')
+
+      if (isBlank) {
+        // Row i in array corresponds to row i+2 in sheet (0-based array, 1-based sheet, row 1 is header)
+        const rowNumber = i + 2
+        deleteRequests.push({
+          deleteDimension: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'ROWS',
+              startIndex: rowNumber - 1,
+              endIndex: rowNumber
+            }
+          }
+        })
+      }
+    }
+
+    if (deleteRequests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: deleteRequests
+        }
+      })
+      console.log(`🧹 Cleaned up ${deleteRequests.length} blank rows`)
+      return { success: true, message: `${deleteRequests.length} blank rows deleted`, rowsDeleted: deleteRequests.length }
+    } else {
+      console.log('🧹 No blank rows found')
+      return { success: true, message: 'No blank rows to clean up', rowsDeleted: 0 }
+    }
+  } catch (error) {
+    console.error('Error cleaning up blank rows:', error.message)
+    throw new Error(`Failed to clean up blank rows: ${error.message}`)
   }
 }
 
