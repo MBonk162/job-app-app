@@ -1,97 +1,138 @@
-# Job Application Tracker Dashboard
+# Job Application Tracker
 
-A full-stack web application to track job applications and generate actionable analytics to optimize your job search strategy.
+A full-stack job application tracking system with web and mobile apps, featuring Google Sheets synchronization and offline-first architecture.
+
+## 📱 Multi-Platform
+
+- **Web App**: React dashboard for desktop browsing
+- **Mobile App**: Flutter Android app with offline support (NEW!)
+- **Backend**: Node.js/Express API
+- **Data Storage**: Google Sheets (cloud) + SQLite (mobile offline)
 
 ## Tech Stack
 
+### Web Application
 - **Frontend**: React (Vite), Tailwind CSS, Chart.js
 - **Backend**: Node.js/Express
-- **Data**: Google Sheets API (currently using mock data)
-- **Deploy**: Vercel (planned)
+- **Data**: Google Sheets API
+
+### Mobile Application (NEW!)
+- **Framework**: Flutter 3.38.6
+- **State Management**: Riverpod 3.x
+- **Local Database**: Drift (SQLite)
+- **Authentication**: Google Sign-In
+- **Sync**: Google Sheets API with two-way sync
 
 ## Features
 
-### MVP Features
-- Dashboard with stats cards (total apps, response rate, active pipeline, avg days to response)
-- Line chart showing applications over time
-- Applications table (sortable, filterable by status)
-- "Add Application" form (modal popup)
-- Google Sheets integration (read/write) - coming soon
+### Web App Features
+- ✅ Dashboard with stats cards (total apps, response rate, active pipeline, avg days to response)
+- ✅ Line chart showing applications over time
+- ✅ Applications table (sortable, filterable by status)
+- ✅ Add/Edit/Delete applications form
+- ✅ Google Sheets integration (read/write)
+- ✅ Timezone-safe date handling
+
+### Mobile App Features (NEW!)
+- ✅ **Offline-first**: Full CRUD without internet
+- ✅ **Add/Edit/Delete** applications (19-field form)
+- ✅ **Tap-to-edit** with prominent company names
+- ✅ **Google Sign-In** authentication
+- ✅ **Two-way sync** with Google Sheets
+- ✅ **Conflict detection** (last-write-wins)
+- ✅ **Visual status badges** with color coding
+- ✅ **Debug database viewer** for development
+- 🚧 Analytics dashboard (planned)
+- 🚧 Search and filter (planned)
 
 ## Project Structure
 
 ```
 job_app_app/
-├── client/                 # React frontend
+├── client/                 # React web frontend
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── StatsCards.jsx
-│   │   │   ├── ApplicationsTable.jsx
-│   │   │   ├── AddApplicationForm.jsx
-│   │   │   └── Charts/
-│   │   │       └── ApplicationsOverTime.jsx
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── utils/
-│   │   │   └── analytics.js
-│   │   ├── App.jsx
-│   │   └── main.jsx
+│   │   ├── components/     # Dashboard, tables, forms, charts
+│   │   ├── services/       # API client
+│   │   └── utils/          # Analytics, date utils
 │   └── package.json
-├── server/                 # Node.js backend
+│
+├── server/                 # Node.js backend API
 │   ├── src/
-│   │   ├── routes/
-│   │   │   └── applications.js
-│   │   ├── services/
-│   │   │   └── googleSheets.js
+│   │   ├── routes/         # REST API routes
+│   │   ├── services/       # Google Sheets integration
 │   │   └── server.js
 │   └── package.json
-└── README.md
+│
+├── mobile/                 # Flutter mobile app (NEW!)
+│   ├── lib/
+│   │   ├── core/           # Theme, constants, utilities
+│   │   ├── features/
+│   │   │   ├── auth/       # Google Sign-In
+│   │   │   └── applications/
+│   │   │       ├── data/   # SQLite, Google Sheets API
+│   │   │       ├── domain/ # Business logic, sync engine
+│   │   │       └── presentation/  # UI screens, providers
+│   │   └── main.dart
+│   ├── pubspec.yaml
+│   └── README.md           # Mobile-specific setup guide
+│
+└── README.md               # This file
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
+- **Web App**: Node.js (v18+), npm or yarn
+- **Mobile App**: Flutter SDK (3.x), Android Studio or VS Code
 
-### Installation
+### Web Application Setup
 
-1. **Install client dependencies**:
+1. **Install dependencies**:
    ```bash
-   cd client
-   npm install
+   # Client
+   cd client && npm install
+
+   # Server
+   cd ../server && npm install
    ```
 
-2. **Install server dependencies**:
-   ```bash
-   cd ../server
-   npm install
-   ```
-
-3. **Set up environment variables** (optional for now):
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Google Sheets credentials when ready
-   ```
-
-### Running the Application
-
-1. **Start the backend server** (in one terminal):
+2. **Set up environment variables**:
    ```bash
    cd server
-   npm run dev
+   cp .env.example .env
+   # Edit .env with your Google Sheets credentials
    ```
-   Server will run on http://localhost:5000
 
-2. **Start the frontend** (in another terminal):
+3. **Run the application**:
    ```bash
-   cd client
-   npm run dev
-   ```
-   Client will run on http://localhost:3000
+   # Terminal 1: Start backend
+   cd server && npm run dev     # http://localhost:5000
 
-3. **Open your browser** and navigate to http://localhost:3000
+   # Terminal 2: Start frontend
+   cd client && npm run dev     # http://localhost:3000
+   ```
+
+### Mobile Application Setup
+
+See **[mobile/README.md](mobile/README.md)** for detailed setup instructions.
+
+**Quick Start**:
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+**Test without OAuth**:
+- Launch app → "Continue without sign-in (offline only)"
+- Add/edit applications offline
+- Everything works locally without internet
+
+**To enable sync**:
+1. Configure Google OAuth (SHA-1 fingerprint in mobile/README.md)
+2. Share Google Sheet with your Gmail account
+3. Sign in on mobile app
+4. Tap sync button to sync with cloud
 
 ## Current Status
 
