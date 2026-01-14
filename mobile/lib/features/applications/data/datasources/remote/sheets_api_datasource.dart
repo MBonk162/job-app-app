@@ -43,9 +43,10 @@ class SheetsApiDataSource {
         final row = rows[i];
 
         // Skip blank rows (empty company AND role_title)
-        if (row.isEmpty || (row.length >= 2 &&
-            (row[0] == null || row[0].toString().trim().isEmpty) &&
-            (row[1] == null || row[1].toString().trim().isEmpty))) {
+        // Column B (index 1) = company, Column C (index 2) = role_title
+        if (row.isEmpty || (row.length >= 3 &&
+            (row[1] == null || row[1].toString().trim().isEmpty) &&
+            (row[2] == null || row[2].toString().trim().isEmpty))) {
           continue;
         }
 
@@ -163,6 +164,8 @@ class SheetsApiDataSource {
 
   /// Convert a sheet row to an ApplicationEntity
   /// Row format matches server/src/services/googleSheets.js:64-87
+  /// Note: Web app doesn't store ID in sheets, uses row number as ID
+  /// Mobile app generates UUID locally, uses sheetRowId for sync
   ApplicationEntity _rowToApplication(List<dynamic> row, int rowNumber) {
     // Helper to safely get string value
     String getString(int index, [String defaultValue = '']) {
@@ -193,27 +196,27 @@ class SheetsApiDataSource {
     }
 
     return ApplicationEntity(
-      id: getString(0), // Column A: id
+      id: 'sheet-$rowNumber', // Generate ID from row number for sync compatibility
       sheetRowId: rowNumber,
-      dateApplied: parseDate(1) ?? DateTime.now(), // Column B: date_applied
-      company: getString(2), // Column C: company
-      roleTitle: getString(3), // Column D: role_title
-      status: ApplicationStatus.fromString(getString(4, 'Applied')), // Column E: status
-      source: getString(5, 'LinkedIn'), // Column F: source
-      applicationMethod: getString(6, 'Quick Apply'), // Column G: application_method
+      dateApplied: parseDate(0) ?? DateTime.now(), // Column A: date_applied
+      company: getString(1), // Column B: company
+      roleTitle: getString(2), // Column C: role_title
+      source: getString(3, 'LinkedIn'), // Column D: source
+      applicationMethod: getString(4, 'Quick Apply'), // Column E: application_method
+      salaryMin: getInt(5), // Column F: salary_min
+      salaryMax: getInt(6), // Column G: salary_max
       location: getString(7), // Column H: location
       companySize: getString(8), // Column I: company_size
       roleType: getString(9), // Column J: role_type
       techStack: getString(10), // Column K: tech_stack
-      salaryMin: getInt(11), // Column L: salary_min
-      salaryMax: getInt(12), // Column M: salary_max
-      customized: parseBool(13, false), // Column N: customized
-      referral: parseBool(14, false), // Column O: referral
-      confidenceMatch: getInt(15), // Column P: confidence_match
-      responseDate: parseDate(16), // Column Q: response_date
-      responseType: getString(17), // Column R: response_type
-      interviewDate: parseDate(18), // Column S: interview_date
-      notes: '', // Notes are not stored in Sheets, only locally
+      customized: parseBool(11, false), // Column L: customized
+      referral: parseBool(12, false), // Column M: referral
+      confidenceMatch: getInt(13), // Column N: confidence_match
+      responseDate: parseDate(14), // Column O: response_date
+      responseType: getString(15), // Column P: response_type
+      interviewDate: parseDate(16), // Column Q: interview_date
+      status: ApplicationStatus.fromString(getString(17, 'Applied')), // Column R: status
+      notes: getString(18), // Column S: notes
       isDirty: false,
       lastModified: DateTime.now(),
       lastSynced: DateTime.now(),
@@ -222,32 +225,32 @@ class SheetsApiDataSource {
 
   /// Convert an ApplicationEntity to a sheet row
   /// Row format matches server/src/services/googleSheets.js:90-111
+  /// Note: ID is NOT stored in sheets (web app uses row number as ID)
   List<dynamic> _applicationToRow(ApplicationEntity application) {
     return [
-      application.id, // Column A: id
-      AppDateUtils.formatLocalDate(application.dateApplied), // Column B: date_applied
-      application.company, // Column C: company
-      application.roleTitle, // Column D: role_title
-      application.status.displayName, // Column E: status
-      application.source, // Column F: source
-      application.applicationMethod, // Column G: application_method
+      AppDateUtils.formatLocalDate(application.dateApplied), // Column A: date_applied
+      application.company, // Column B: company
+      application.roleTitle, // Column C: role_title
+      application.source, // Column D: source
+      application.applicationMethod, // Column E: application_method
+      application.salaryMin ?? '', // Column F: salary_min
+      application.salaryMax ?? '', // Column G: salary_max
       application.location, // Column H: location
       application.companySize, // Column I: company_size
       application.roleType, // Column J: role_type
       application.techStack, // Column K: tech_stack
-      application.salaryMin ?? '', // Column L: salary_min
-      application.salaryMax ?? '', // Column M: salary_max
-      application.customized ? 'Yes' : 'No', // Column N: customized
-      application.referral ? 'Yes' : 'No', // Column O: referral
-      application.confidenceMatch ?? '', // Column P: confidence_match
+      application.customized ? 'Yes' : 'No', // Column L: customized
+      application.referral ? 'Yes' : 'No', // Column M: referral
+      application.confidenceMatch ?? '', // Column N: confidence_match
       application.responseDate != null
           ? AppDateUtils.formatLocalDate(application.responseDate!)
-          : '', // Column Q: response_date
-      application.responseType ?? '', // Column R: response_type
+          : '', // Column O: response_date
+      application.responseType ?? '', // Column P: response_type
       application.interviewDate != null
           ? AppDateUtils.formatLocalDate(application.interviewDate!)
-          : '', // Column S: interview_date
-      // Note: notes are not synced to Sheets, only stored locally
+          : '', // Column Q: interview_date
+      application.status.displayName, // Column R: status
+      application.notes, // Column S: notes
     ];
   }
 
