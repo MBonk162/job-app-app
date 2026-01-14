@@ -64,6 +64,15 @@ final syncApplicationsProvider = Provider<Future<SyncResult> Function()>((ref) {
   };
 });
 
+/// Provider to trigger clear and re-sync
+/// Deletes all local data and re-downloads from Google Sheets
+final clearAndResyncProvider = Provider<Future<SyncResult> Function()>((ref) {
+  return () async {
+    final syncUseCase = ref.read(syncApplicationsUseCaseProvider);
+    return await syncUseCase.clearAndResync();
+  };
+});
+
 /// Provider to track last sync time
 class LastSyncTimeNotifier extends Notifier<DateTime?> {
   @override

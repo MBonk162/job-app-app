@@ -140,6 +140,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   );
                   break;
+                case 'clearResync':
+                  // Show confirmation dialog
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Clear & Re-sync'),
+                      content: const Text(
+                        'This will delete all local data and re-download from Google Sheets. '
+                        'Any unsaved changes will be lost. Continue?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                          child: const Text('Clear & Re-sync'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmed == true && context.mounted) {
+                    ref.read(syncStatusProvider.notifier).setStatus(SyncStatus.syncing);
+
+                    try {
+                      final clearAndResyncFunction = ref.read(clearAndResyncProvider);
+                      final result = await clearAndResyncFunction();
+
+                      if (result.hasErrors) {
+                        ref.read(syncStatusProvider.notifier).setStatus(SyncStatus.error);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Clear & re-sync failed: ${result.errors.join(', ')}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } else {
+                        ref.read(syncStatusProvider.notifier).setStatus(SyncStatus.success);
+                        ref.read(lastSyncTimeProvider.notifier).update(DateTime.now());
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Clear & re-sync complete: ${result.downloaded} downloaded'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      ref.read(syncStatusProvider.notifier).setStatus(SyncStatus.error);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Clear & re-sync error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } finally {
+                      Future.delayed(const Duration(seconds: 2), () {
+                        ref.read(syncStatusProvider.notifier).setStatus(SyncStatus.idle);
+                      });
+                    }
+                  }
+                  break;
                 case 'signout':
                   if (currentUser != null) {
                     await ref.read(currentUserProvider.notifier).signOut();
@@ -161,6 +232,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
               ),
+              if (currentUser != null)
+                const PopupMenuItem(
+                  value: 'clearResync',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('Clear & Re-sync'),
+                    ],
+                  ),
+                ),
               if (currentUser != null || isOfflineMode)
                 PopupMenuItem(
                   value: 'signout',

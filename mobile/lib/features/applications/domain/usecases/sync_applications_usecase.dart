@@ -34,6 +34,61 @@ class SyncApplicationsUseCase {
 
   SyncApplicationsUseCase(this._database, this._remoteDataSource);
 
+  /// Clear local database and re-download everything from Google Sheets
+  /// Useful for fixing sync issues or corrupted data
+  Future<SyncResult> clearAndResync() async {
+    if (_remoteDataSource == null) {
+      return SyncResult(
+        downloaded: 0,
+        uploaded: 0,
+        conflicts: 0,
+        errors: ['Not authenticated. Cannot sync without sign-in.'],
+      );
+    }
+
+    try {
+      print('🗑️  Clearing local database...');
+      final deletedCount = await _database.deleteAllApplications();
+      print('✅ Deleted $deletedCount local applications');
+
+      print('⬇️  Re-downloading from Google Sheets...');
+      final remoteApps = await _remoteDataSource.fetchAll();
+      print('✅ Fetched ${remoteApps.length} applications from Sheets');
+
+      int downloaded = 0;
+      final errors = <String>[];
+
+      for (final remoteApp in remoteApps) {
+        try {
+          final companion = remoteApp.toCompanion();
+          await _database.insertApplication(companion);
+          downloaded++;
+          print('Downloaded: ${remoteApp.company}');
+        } catch (e) {
+          errors.add('Error downloading ${remoteApp.company}: $e');
+          print('Error: $e');
+        }
+      }
+
+      print('✅ Clear & re-sync complete: $downloaded applications downloaded');
+
+      return SyncResult(
+        downloaded: downloaded,
+        uploaded: 0,
+        conflicts: 0,
+        errors: errors,
+      );
+    } catch (e) {
+      print('❌ Clear & re-sync failed: $e');
+      return SyncResult(
+        downloaded: 0,
+        uploaded: 0,
+        conflicts: 0,
+        errors: ['Clear & re-sync failed: $e'],
+      );
+    }
+  }
+
   /// Perform full sync: download from Sheets, then upload dirty local records
   Future<SyncResult> execute() async {
     // Check if remote sync is available
@@ -62,43 +117,54 @@ class SyncApplicationsUseCase {
       final localApps = localAppsDb.map((app) => app.toEntity()).toList();
       print('Found ${localApps.length} applications in local database');
 
-      // Create maps for easier lookup
-      final localById = {for (var app in localApps) app.id: app};
-      final localDbById = {for (var app in localAppsDb) app.id: app};
+      // Create maps for easier lookup BY SHEET ROW ID (not by id field)
+      // sheetRowId is the stable identifier for sync (Google Sheets row number)
+      final localBySheetRowId = {
+        for (var app in localApps)
+          if (app.sheetRowId != null) app.sheetRowId!: app
+      };
+      final localDbBySheetRowId = {
+        for (var app in localAppsDb)
+          if (app.sheetRowId != null) app.sheetRowId!: app
+      };
+
+      print('Local apps with sheetRowId: ${localBySheetRowId.length}');
 
       // Step 3: Download phase - process remote applications
       for (final remoteApp in remoteApps) {
         try {
-          final localApp = localById[remoteApp.id];
+          // Match by sheetRowId, not by id
+          final localApp = remoteApp.sheetRowId != null
+              ? localBySheetRowId[remoteApp.sheetRowId]
+              : null;
 
           if (localApp == null) {
             // New application from Sheets - insert locally
             final companion = remoteApp.toCompanion();
             await _database.insertApplication(companion);
             downloaded++;
-            print('Downloaded new application: ${remoteApp.company}');
+            print('Downloaded new application: ${remoteApp.company} (row ${remoteApp.sheetRowId})');
           } else {
-            // Application exists locally - check if remote is newer
-            final remoteModified = remoteApp.lastModified;
-            final localModified = localApp.lastModified;
-
-            if (localApp.isDirty && remoteModified.isAfter(localModified)) {
-              // CONFLICT: Both local and remote have changes
-              conflicts++;
-              print('Conflict detected for: ${remoteApp.company}');
-              // For now, keep local version (user will resolve later)
-              // TODO: Implement conflict resolution UI
-            } else if (remoteModified.isAfter(localModified)) {
-              // Remote is newer - update local
-              // Convert entity to database Application object
-              final dbApp = localDbById[remoteApp.id];
-              if (dbApp != null) {
-                // Create updated Application from remoteApp
-                final updatedDb = remoteApp.toCompanion().toApplication();
-                await _database.updateApplication(updatedDb);
-                downloaded++;
-                print('Updated local application: ${remoteApp.company}');
+            // Application exists locally - update it with remote data
+            // Remote is source of truth, so always update from remote
+            final dbApp = localDbBySheetRowId[remoteApp.sheetRowId!];
+            if (dbApp != null) {
+              // Check if local has unsaved changes
+              if (localApp.isDirty) {
+                conflicts++;
+                print('Conflict: Local has unsaved changes for ${remoteApp.company}');
+                // Keep local version, user can sync again later to upload
+                continue;
               }
+
+              // Create updated Application from remoteApp, preserving local id
+              final updatedCompanion = remoteApp.toCompanion().copyWith(
+                id: Value(localApp.id), // Keep local UUID
+              );
+              final updatedDb = updatedCompanion.toApplication();
+              await _database.updateApplication(updatedDb);
+              downloaded++;
+              print('Updated local application: ${remoteApp.company} (row ${remoteApp.sheetRowId})');
             }
           }
         } catch (e) {
