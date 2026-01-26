@@ -1,8 +1,37 @@
 /// Application-wide constants
 class AppConstants {
   // Google Sheets Configuration
-  static const String googleSpreadsheetId = '1SGzwZd5Sl8LtNAEdTOlvw-llIIgOSSZlykxlvRhQZaw';
-  static const String spreadsheetId = googleSpreadsheetId; // Alias for compatibility
+  // Default sheet ID (can be overridden by user configuration)
+  static const String defaultSpreadsheetId = '1SGzwZd5Sl8LtNAEdTOlvw-llIIgOSSZlykxlvRhQZaw';
+
+  // Demo mode identifier
+  static const String demoModeId = 'demo';
+
+  // Current spreadsheet ID - can be dynamically set
+  static String _currentSpreadsheetId = defaultSpreadsheetId;
+  static bool _isDemoMode = true; // Default to demo mode for portfolio
+
+  // Getters for current configuration
+  static String get spreadsheetId => _isDemoMode ? demoModeId : _currentSpreadsheetId;
+  static String get googleSpreadsheetId => spreadsheetId; // Alias for compatibility
+  static bool get isDemoMode => _isDemoMode;
+
+  // Setters for runtime configuration
+  static void setSpreadsheetId(String id) {
+    _currentSpreadsheetId = id;
+    _isDemoMode = false;
+  }
+
+  static void enableDemoMode() {
+    _isDemoMode = true;
+  }
+
+  static void disableDemoMode(String sheetId) {
+    _currentSpreadsheetId = sheetId;
+    _isDemoMode = false;
+  }
+
+  // Sheet structure constants
   static const String sheetName = 'Sheet1';
   static const String dataRange = 'A2:S'; // Skip header row
   static const String sheetDataRange = '$sheetName!$dataRange'; // Sheet1!A2:S

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/constants/app_constants.dart';
+import 'core/services/sheet_config_service.dart';
 import 'features/applications/presentation/providers/applications_provider.dart';
 import 'features/applications/presentation/screens/add_application_screen.dart';
 import 'features/applications/presentation/screens/edit_application_screen.dart';
@@ -51,6 +53,149 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     const ApplicationsListScreen(),
     const PlaceholderScreen(title: 'Analytics'),
   ];
+
+  void _showSheetConfigDialog(BuildContext context, WidgetRef ref) {
+    final TextEditingController sheetIdController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Data Source'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Current status
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppConstants.isDemoMode
+                      ? Colors.amber.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppConstants.isDemoMode ? Colors.amber : Colors.green,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      AppConstants.isDemoMode ? Icons.science : Icons.check_circle,
+                      color: AppConstants.isDemoMode ? Colors.amber : Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppConstants.isDemoMode
+                          ? 'Currently in Demo Mode'
+                          : 'Connected to your sheet',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppConstants.isDemoMode ? Colors.amber[800] : Colors.green[800],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Demo mode option
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Radio<bool>(
+                  value: true,
+                  groupValue: AppConstants.isDemoMode,
+                  onChanged: (value) {
+                    AppConstants.enableDemoMode();
+                    SheetConfigService.setDemoMode();
+                    ref.invalidate(applicationsProvider);
+                    Navigator.pop(context);
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Switched to Demo Mode'),
+                        backgroundColor: Colors.amber,
+                      ),
+                    );
+                  },
+                ),
+                title: const Text('Demo Mode'),
+                subtitle: const Text('View sample data to explore the app'),
+              ),
+
+              const Divider(),
+
+              // Custom sheet option
+              const Text(
+                'Connect Your Own Sheet',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: sheetIdController,
+                decoration: const InputDecoration(
+                  hintText: 'Paste Sheet ID or URL',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final input = sheetIdController.text.trim();
+                    if (input.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a Sheet ID'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Extract sheet ID from URL if needed
+                    String sheetId = input;
+                    final urlMatch = RegExp(r'/spreadsheets/d/([a-zA-Z0-9-_]+)')
+                        .firstMatch(input);
+                    if (urlMatch != null) {
+                      sheetId = urlMatch.group(1)!;
+                    }
+
+                    AppConstants.disableDemoMode(sheetId);
+                    SheetConfigService.setCustomSheet(sheetId, null);
+                    ref.invalidate(applicationsProvider);
+                    Navigator.pop(context);
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connected to custom sheet'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  child: const Text('Connect'),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              const Text(
+                'Note: Your sheet must be shared with your Google account and have the same column structure.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +277,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (value) async {
               switch (value) {
+                case 'sheetConfig':
+                  _showSheetConfigDialog(context, ref);
+                  break;
                 case 'debug':
                   Navigator.push(
                     context,
@@ -222,6 +370,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'sheetConfig',
+                child: Row(
+                  children: [
+                    Icon(
+                      AppConstants.isDemoMode ? Icons.science : Icons.table_chart,
+                      color: AppConstants.isDemoMode ? Colors.amber : Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(AppConstants.isDemoMode ? 'Demo Mode' : 'Connected Sheet'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'debug',
                 child: Row(
@@ -258,7 +420,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: _screens[_currentIndex],
+      body: Column(
+        children: [
+          // Demo mode banner
+          if (AppConstants.isDemoMode)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.amber,
+              child: const Row(
+                children: [
+                  Icon(Icons.science, size: 16, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Demo Mode: Viewing sample data',
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // Main content
+          Expanded(child: _screens[_currentIndex]),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

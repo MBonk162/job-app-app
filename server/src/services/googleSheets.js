@@ -35,7 +35,23 @@ if (process.env.GOOGLE_CREDENTIALS_JSON) {
 const auth = new google.auth.GoogleAuth(authConfig)
 
 const sheets = google.sheets({ version: 'v4', auth })
-const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID
+
+// Sheet configuration
+const DEFAULT_SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID
+const DEMO_MODE = 'demo' // Special value indicating demo mode
+
+// Helper to determine if we're in demo mode
+export const isDemoMode = (sheetId) => {
+  return !sheetId || sheetId === DEMO_MODE
+}
+
+// Get the effective spreadsheet ID (returns null for demo mode)
+const getSpreadsheetId = (sheetId) => {
+  if (isDemoMode(sheetId)) {
+    return null // Will trigger mock data
+  }
+  return sheetId || DEFAULT_SPREADSHEET_ID
+}
 
 // Column mapping (A=0, B=1, etc.)
 const COLUMNS = {
@@ -111,74 +127,280 @@ const applicationToRow = (app) => {
   return row
 }
 
-// Mock data for when credentials aren't configured
-const MOCK_APPLICATIONS = [
+// Rich demo data for portfolio showcase
+const DEMO_APPLICATIONS = [
   {
     id: 2,
-    date_applied: '2025-12-15',
-    company: 'TechCorp',
-    role_title: 'Senior Software Engineer',
+    date_applied: '2025-01-02',
+    company: 'Stripe',
+    role_title: 'Senior Full Stack Engineer',
     source: 'LinkedIn',
-    application_method: 'Online',
-    salary_min: 120000,
-    salary_max: 150000,
+    application_method: 'Full Application',
+    salary_min: 180000,
+    salary_max: 220000,
     location: 'Remote',
-    company_size: '500-1000',
+    company_size: 'Enterprise 1000+',
     role_type: 'Full-Stack',
-    tech_stack: 'React, Node.js, PostgreSQL',
+    tech_stack: 'Ruby, React, TypeScript, PostgreSQL',
     customized: 'Yes',
     referral: 'No',
-    confidence_match: 4,
-    response_date: '2025-12-20',
-    response_type: 'Phone Screen',
-    interview_date: '2025-12-28',
-    status: 'Phone Screen',
-    notes: 'Great company culture'
+    confidence_match: 5,
+    response_date: '2025-01-08',
+    response_type: 'Phone',
+    interview_date: '2025-01-15',
+    status: 'Technical',
+    notes: 'Great interview experience, technical round scheduled'
   },
   {
     id: 3,
-    date_applied: '2025-12-18',
-    company: 'StartupXYZ',
-    role_title: 'Frontend Developer',
-    source: 'Indeed',
-    application_method: 'Email',
-    salary_min: 100000,
-    salary_max: 130000,
-    location: 'New York, NY',
-    company_size: '50-100',
+    date_applied: '2025-01-05',
+    company: 'Vercel',
+    role_title: 'Frontend Engineer',
+    source: 'Company Site',
+    application_method: 'Full Application',
+    salary_min: 160000,
+    salary_max: 200000,
+    location: 'Remote',
+    company_size: 'Mid 100-1000',
     role_type: 'Frontend',
-    tech_stack: 'React, TypeScript, Tailwind',
+    tech_stack: 'Next.js, React, TypeScript, Tailwind',
     customized: 'Yes',
     referral: 'Yes',
     confidence_match: 5,
+    response_date: '2025-01-10',
+    response_type: 'Email',
+    interview_date: '2025-01-18',
+    status: 'Phone Screen',
+    notes: 'Referred by former colleague, excited about the role'
+  },
+  {
+    id: 4,
+    date_applied: '2025-01-08',
+    company: 'Notion',
+    role_title: 'Software Engineer',
+    source: 'LinkedIn',
+    application_method: 'Quick Apply',
+    salary_min: 150000,
+    salary_max: 190000,
+    location: 'San Francisco, CA',
+    company_size: 'Mid 100-1000',
+    role_type: 'Full-Stack',
+    tech_stack: 'TypeScript, React, Node.js, PostgreSQL',
+    customized: 'No',
+    referral: 'No',
+    confidence_match: 4,
     response_date: null,
     response_type: null,
     interview_date: null,
     status: 'Applied',
-    notes: 'Referred by colleague'
+    notes: 'Dream company, waiting to hear back'
+  },
+  {
+    id: 5,
+    date_applied: '2025-01-10',
+    company: 'Figma',
+    role_title: 'Full Stack Developer',
+    source: 'Indeed',
+    application_method: 'Full Application',
+    salary_min: 170000,
+    salary_max: 210000,
+    location: 'Remote',
+    company_size: 'Mid 100-1000',
+    role_type: 'Full-Stack',
+    tech_stack: 'C++, TypeScript, React, WebGL',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 3,
+    response_date: '2025-01-15',
+    response_type: 'Rejection',
+    interview_date: null,
+    status: 'Rejected',
+    notes: 'Position filled internally'
+  },
+  {
+    id: 6,
+    date_applied: '2025-01-12',
+    company: 'Datadog',
+    role_title: 'Backend Engineer',
+    source: 'Recruiter',
+    application_method: 'Email',
+    salary_min: 165000,
+    salary_max: 200000,
+    location: 'New York, NY',
+    company_size: 'Enterprise 1000+',
+    role_type: 'Backend',
+    tech_stack: 'Go, Python, Kubernetes, AWS',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 4,
+    response_date: '2025-01-14',
+    response_type: 'Phone',
+    interview_date: '2025-01-20',
+    status: 'Phone Screen',
+    notes: 'Recruiter reached out, strong fit for observability team'
+  },
+  {
+    id: 7,
+    date_applied: '2025-01-14',
+    company: 'Cloudflare',
+    role_title: 'Systems Engineer',
+    source: 'LinkedIn',
+    application_method: 'Full Application',
+    salary_min: 175000,
+    salary_max: 215000,
+    location: 'Austin, TX',
+    company_size: 'Enterprise 1000+',
+    role_type: 'Backend',
+    tech_stack: 'Rust, Go, Linux, Networking',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 4,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Interesting edge computing work'
+  },
+  {
+    id: 8,
+    date_applied: '2025-01-16',
+    company: 'Linear',
+    role_title: 'Product Engineer',
+    source: 'Company Site',
+    application_method: 'Full Application',
+    salary_min: 155000,
+    salary_max: 195000,
+    location: 'Remote',
+    company_size: 'Startup <100',
+    role_type: 'Full-Stack',
+    tech_stack: 'TypeScript, React, GraphQL, PostgreSQL',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 5,
+    response_date: '2025-01-19',
+    response_type: 'Email',
+    interview_date: '2025-01-25',
+    status: 'Response',
+    notes: 'Love their product philosophy'
+  },
+  {
+    id: 9,
+    date_applied: '2025-01-18',
+    company: 'Supabase',
+    role_title: 'Developer Advocate',
+    source: 'Referral',
+    application_method: 'Email',
+    salary_min: 140000,
+    salary_max: 180000,
+    location: 'Remote',
+    company_size: 'Startup <100',
+    role_type: 'Developer Relations',
+    tech_stack: 'PostgreSQL, TypeScript, Technical Writing',
+    customized: 'Yes',
+    referral: 'Yes',
+    confidence_match: 4,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Interesting blend of coding and community work'
+  },
+  {
+    id: 10,
+    date_applied: '2025-01-20',
+    company: 'Anthropic',
+    role_title: 'Software Engineer - Platform',
+    source: 'Company Site',
+    application_method: 'Full Application',
+    salary_min: 200000,
+    salary_max: 280000,
+    location: 'San Francisco, CA',
+    company_size: 'Mid 100-1000',
+    role_type: 'Backend',
+    tech_stack: 'Python, Kubernetes, ML Infrastructure',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 4,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Excited about AI safety mission'
+  },
+  {
+    id: 11,
+    date_applied: '2025-01-22',
+    company: 'Planetscale',
+    role_title: 'Database Engineer',
+    source: 'LinkedIn',
+    application_method: 'Quick Apply',
+    salary_min: 160000,
+    salary_max: 200000,
+    location: 'Remote',
+    company_size: 'Startup <100',
+    role_type: 'Backend',
+    tech_stack: 'MySQL, Vitess, Go, Kubernetes',
+    customized: 'No',
+    referral: 'No',
+    confidence_match: 3,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Would need to ramp up on Vitess'
+  },
+  {
+    id: 12,
+    date_applied: '2025-01-24',
+    company: 'Retool',
+    role_title: 'Frontend Engineer',
+    source: 'Indeed',
+    application_method: 'Full Application',
+    salary_min: 150000,
+    salary_max: 185000,
+    location: 'San Francisco, CA',
+    company_size: 'Mid 100-1000',
+    role_type: 'Frontend',
+    tech_stack: 'React, TypeScript, GraphQL',
+    customized: 'Yes',
+    referral: 'No',
+    confidence_match: 4,
+    response_date: null,
+    response_type: null,
+    interview_date: null,
+    status: 'Applied',
+    notes: 'Interesting internal tools space'
   }
 ]
 
 // Get all applications
-export const getApplications = async () => {
-  // Return mock data if credentials aren't valid or sheet ID is missing
-  if (!credentialsValid) {
-    console.log('📋 Using mock data - Google credentials not configured or invalid')
-    return MOCK_APPLICATIONS
+export const getApplications = async (sheetId = null) => {
+  const spreadsheetId = getSpreadsheetId(sheetId)
+
+  // Return demo data if in demo mode
+  if (isDemoMode(sheetId)) {
+    console.log('📋 Demo mode - returning sample applications')
+    return DEMO_APPLICATIONS
   }
 
-  if (!SPREADSHEET_ID) {
-    console.log('📋 Using mock data - GOOGLE_SHEET_ID not configured')
-    return MOCK_APPLICATIONS
+  // Return demo data if credentials aren't valid
+  if (!credentialsValid) {
+    console.log('📋 Using demo data - Google credentials not configured or invalid')
+    return DEMO_APPLICATIONS
+  }
+
+  if (!spreadsheetId) {
+    console.log('📋 Using demo data - No sheet ID provided')
+    return DEMO_APPLICATIONS
   }
 
   try {
-    console.log(`🔍 Attempting to fetch from Sheet ID: ${SPREADSHEET_ID}`)
+    console.log(`🔍 Attempting to fetch from Sheet ID: ${spreadsheetId}`)
     console.log(`🔍 Range: Sheet1!A2:S`)
     console.log(`🔍 Credentials valid: ${credentialsValid}`)
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       range: 'Sheet1!A2:S', // Skip header row, read all data columns
     })
 
@@ -205,9 +427,17 @@ export const getApplications = async () => {
 }
 
 // Add new application
-export const addApplication = async (applicationData) => {
+export const addApplication = async (applicationData, sheetId = null) => {
+  const spreadsheetId = getSpreadsheetId(sheetId)
+
+  // Return demo success if in demo mode
+  if (isDemoMode(sheetId)) {
+    console.log('📝 Demo mode - application added to demo data (not persisted)')
+    return { ...applicationData, id: Date.now(), _demo: true }
+  }
+
   // Return mock success if credentials aren't valid or sheet ID is missing
-  if (!credentialsValid || !SPREADSHEET_ID) {
+  if (!credentialsValid || !spreadsheetId) {
     console.log('📝 Mock mode - application not saved (credentials not configured or invalid)')
     return { ...applicationData, id: Date.now() }
   }
@@ -218,7 +448,7 @@ export const addApplication = async (applicationData) => {
     console.log('📝 Converted to row array (length:', row.length, '):', JSON.stringify(row))
 
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       range: 'Sheet1!A:A',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
@@ -248,9 +478,17 @@ export const addApplication = async (applicationData) => {
 }
 
 // Update application
-export const updateApplication = async (id, updates) => {
+export const updateApplication = async (id, updates, sheetId = null) => {
+  const spreadsheetId = getSpreadsheetId(sheetId)
+
+  // Return demo success if in demo mode
+  if (isDemoMode(sheetId)) {
+    console.log('✏️  Demo mode - application updated in demo data (not persisted)')
+    return { ...updates, id, _demo: true }
+  }
+
   // Return mock success if credentials aren't valid or sheet ID is missing
-  if (!credentialsValid || !SPREADSHEET_ID) {
+  if (!credentialsValid || !spreadsheetId) {
     console.log('✏️  Mock mode - application not updated (credentials not configured or invalid)')
     return { ...updates, id }
   }
@@ -261,7 +499,7 @@ export const updateApplication = async (id, updates) => {
 
     // First, get the existing row
     const existingResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       range: `Sheet1!A${rowNumber}:S${rowNumber}`,
     })
 
@@ -274,7 +512,7 @@ export const updateApplication = async (id, updates) => {
 
     // Update the row
     await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       range: `Sheet1!A${rowNumber}:S${rowNumber}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
@@ -291,9 +529,17 @@ export const updateApplication = async (id, updates) => {
 }
 
 // Delete application
-export const deleteApplication = async (id) => {
+export const deleteApplication = async (id, sheetId = null) => {
+  const spreadsheetId = getSpreadsheetId(sheetId)
+
+  // Return demo success if in demo mode
+  if (isDemoMode(sheetId)) {
+    console.log('🗑️  Demo mode - application deleted from demo data (not persisted)')
+    return { success: true, message: 'Application deleted successfully (demo mode)', _demo: true }
+  }
+
   // Return mock success if credentials aren't valid or sheet ID is missing
-  if (!credentialsValid || !SPREADSHEET_ID) {
+  if (!credentialsValid || !spreadsheetId) {
     console.log('🗑️  Mock mode - application not deleted (credentials not configured or invalid)')
     return { success: true, message: 'Application deleted successfully (mock mode)' }
   }
@@ -305,16 +551,16 @@ export const deleteApplication = async (id) => {
     // Use batchUpdate to actually delete the row (not just clear it)
     // Google Sheets API uses 0-based indexing for dimensions
     // So row 2 (first data row) = index 1
-    const sheetId = 0 // Sheet1 is typically ID 0, adjust if using different sheet
+    const tabId = 0 // Sheet1 is typically ID 0, adjust if using different sheet
 
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       requestBody: {
         requests: [
           {
             deleteDimension: {
               range: {
-                sheetId: sheetId,
+                sheetId: tabId,
                 dimension: 'ROWS',
                 startIndex: rowNumber - 1, // Convert to 0-based index
                 endIndex: rowNumber // endIndex is exclusive, so this deletes one row
@@ -334,21 +580,23 @@ export const deleteApplication = async (id) => {
 }
 
 // Clean up blank rows (utility function)
-export const cleanupBlankRows = async () => {
-  if (!credentialsValid || !SPREADSHEET_ID) {
-    console.log('🧹 Mock mode - cleanup not performed')
-    return { success: true, message: 'Cleanup skipped (mock mode)', rowsDeleted: 0 }
+export const cleanupBlankRows = async (sheetId = null) => {
+  const spreadsheetId = getSpreadsheetId(sheetId)
+
+  if (isDemoMode(sheetId) || !credentialsValid || !spreadsheetId) {
+    console.log('🧹 Demo/Mock mode - cleanup not performed')
+    return { success: true, message: 'Cleanup skipped (demo mode)', rowsDeleted: 0 }
   }
 
   try {
     // Get all rows
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       range: 'Sheet1!A2:S',
     })
 
     const rows = response.data.values || []
-    const sheetId = 0
+    const tabId = 0
 
     // Find blank rows (rows where all cells are empty)
     const deleteRequests = []
@@ -364,7 +612,7 @@ export const cleanupBlankRows = async () => {
         deleteRequests.push({
           deleteDimension: {
             range: {
-              sheetId: sheetId,
+              sheetId: tabId,
               dimension: 'ROWS',
               startIndex: rowNumber - 1,
               endIndex: rowNumber
@@ -376,7 +624,7 @@ export const cleanupBlankRows = async () => {
 
     if (deleteRequests.length > 0) {
       await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: spreadsheetId,
         requestBody: {
           requests: deleteRequests
         }
@@ -394,9 +642,9 @@ export const cleanupBlankRows = async () => {
 }
 
 // Get analytics
-export const getAnalytics = async () => {
+export const getAnalytics = async (sheetId = null) => {
   try {
-    const applications = await getApplications()
+    const applications = await getApplications(sheetId)
 
     const withResponse = applications.filter(app => app.response_date && app.response_date.trim() !== '').length
     const responseRate = applications.length > 0
@@ -427,10 +675,77 @@ export const getAnalytics = async () => {
       totalApplications: applications.length,
       responseRate: parseFloat(responseRate),
       activePipeline,
-      avgDaysToResponse
+      avgDaysToResponse,
+      isDemo: isDemoMode(sheetId)
     }
   } catch (error) {
     console.error('Error calculating analytics:', error.message)
     throw new Error(`Failed to calculate analytics: ${error.message}`)
+  }
+}
+
+// Validate a sheet ID - checks if we can access the sheet
+export const validateSheet = async (sheetId) => {
+  // Demo mode is always valid
+  if (isDemoMode(sheetId)) {
+    return {
+      valid: true,
+      mode: 'demo',
+      message: 'Demo mode - using sample data'
+    }
+  }
+
+  // Check if credentials are valid
+  if (!credentialsValid) {
+    return {
+      valid: false,
+      error: 'Google credentials not configured. Demo mode is available.',
+      mode: 'no_credentials'
+    }
+  }
+
+  try {
+    // Try to read the sheet metadata
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: sheetId,
+      fields: 'properties.title,sheets.properties.title'
+    })
+
+    const title = response.data.properties?.title || 'Untitled'
+    const sheetNames = response.data.sheets?.map(s => s.properties?.title) || []
+
+    // Check if Sheet1 exists
+    const hasSheet1 = sheetNames.includes('Sheet1')
+
+    return {
+      valid: true,
+      mode: 'custom',
+      title,
+      sheets: sheetNames,
+      hasSheet1,
+      message: hasSheet1
+        ? `Connected to "${title}"`
+        : `Connected to "${title}" but Sheet1 not found. Available sheets: ${sheetNames.join(', ')}`
+    }
+  } catch (error) {
+    console.error('Error validating sheet:', error.message)
+    return {
+      valid: false,
+      error: error.message.includes('not found') || error.code === 404
+        ? 'Spreadsheet not found. Check the ID and sharing settings.'
+        : error.message.includes('permission') || error.code === 403
+        ? 'No permission to access this spreadsheet. Make sure it is shared with the service account.'
+        : `Failed to access spreadsheet: ${error.message}`,
+      mode: 'error'
+    }
+  }
+}
+
+// Get current sheet configuration info
+export const getSheetConfig = () => {
+  return {
+    hasCredentials: credentialsValid,
+    defaultSheetId: DEFAULT_SPREADSHEET_ID || null,
+    demoAvailable: true
   }
 }

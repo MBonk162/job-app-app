@@ -1,6 +1,7 @@
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/utils/date_utils.dart';
+import '../../../../../core/services/sheet_config_service.dart';
 import '../../models/application_model.dart';
 import '../../../domain/entities/application_entity.dart';
 import '../../../../auth/data/datasources/google_auth_datasource.dart';
@@ -11,6 +12,9 @@ class SheetsApiDataSource {
   final GoogleAuthDataSource _authDataSource;
 
   SheetsApiDataSource(this._authDataSource);
+
+  /// Check if currently in demo mode
+  bool get isDemoMode => AppConstants.isDemoMode;
 
   /// Get authenticated Sheets API client
   Future<sheets.SheetsApi> _getSheetsApi() async {
@@ -23,7 +27,14 @@ class SheetsApiDataSource {
 
   /// Fetch all applications from Google Sheets
   /// Returns list of applications from Sheet1!A2:S (skipping header row)
+  /// In demo mode, returns sample data instead
   Future<List<ApplicationEntity>> fetchAll() async {
+    // Return demo data if in demo mode
+    if (isDemoMode) {
+      print('📋 Demo mode - returning sample applications');
+      return DemoData.getDemoApplications();
+    }
+
     try {
       final sheetsApi = await _getSheetsApi();
       final response = await sheetsApi.spreadsheets.values.get(
@@ -68,7 +79,18 @@ class SheetsApiDataSource {
 
   /// Create a new application in Google Sheets
   /// Appends a new row and returns the application with sheetRowId set
+  /// In demo mode, returns the application without persisting
   Future<ApplicationEntity> create(ApplicationEntity application) async {
+    // In demo mode, simulate success without persisting
+    if (isDemoMode) {
+      print('📝 Demo mode - application added (not persisted)');
+      return application.copyWith(
+        sheetRowId: DateTime.now().millisecondsSinceEpoch % 10000,
+        lastSynced: DateTime.now(),
+        isDirty: false,
+      );
+    }
+
     try {
       final sheetsApi = await _getSheetsApi();
       final row = _applicationToRow(application);
@@ -102,7 +124,17 @@ class SheetsApiDataSource {
   }
 
   /// Update an existing application in Google Sheets
+  /// In demo mode, returns the application without persisting
   Future<ApplicationEntity> update(ApplicationEntity application) async {
+    // In demo mode, simulate success without persisting
+    if (isDemoMode) {
+      print('✏️ Demo mode - application updated (not persisted)');
+      return application.copyWith(
+        lastSynced: DateTime.now(),
+        isDirty: false,
+      );
+    }
+
     if (application.sheetRowId == null) {
       throw ArgumentError('Cannot update application without sheetRowId');
     }
@@ -134,7 +166,14 @@ class SheetsApiDataSource {
   }
 
   /// Delete an application from Google Sheets by row ID
+  /// In demo mode, simulates success without persisting
   Future<void> delete(int sheetRowId) async {
+    // In demo mode, simulate success without persisting
+    if (isDemoMode) {
+      print('🗑️ Demo mode - application deleted (not persisted)');
+      return;
+    }
+
     try {
       final sheetsApi = await _getSheetsApi();
       final request = sheets.Request(
